@@ -31,9 +31,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# === 🧠 Load YOLO Model ===
+import requests
+
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1MzNcsebrm0IBUhbsRoD7L8tW3Grv85MJ"
+MODEL_PATH = BASE_DIR / "best.pt"
+
+# Download model if not exists
 if not MODEL_PATH.exists():
-    raise FileNotFoundError(f"Model file not found at: {MODEL_PATH}")
+    print("⬇️ Downloading model file...")
+    response = requests.get(MODEL_URL)
+    with open(MODEL_PATH, "wb") as f:
+        f.write(response.content)
+    print("✅ Model downloaded successfully")
+
 
 model = YOLO(str(MODEL_PATH))
 print(f"🚀 Model loaded successfully from: {MODEL_PATH}")
