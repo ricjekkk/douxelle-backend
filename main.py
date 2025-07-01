@@ -32,17 +32,45 @@ app.add_middleware(
 )
 
 import requests
+from tqdm import tqdm
 
-MODEL_URL = "https://drive.google.com/uc?export=download&id=1MzNcsebrm0IBUhbsRoD7L8tW3Grv85MJ"
+def download_file_from_google_drive(id, destination):
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+    response = session.get(URL, params={'id': id}, stream=True)
+
+    def get_confirm_token(response):
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                return value
+        return None
+
+    token = get_confirm_token(response)
+    if token:
+        params = {'id': id, 'confirm': token}
+        response = session.get(URL, params=params, stream=True)
+
+    total = int(response.headers.get('content-length', 0))
+    with open(destination, "wb") as f, tqdm(
+        desc="⬇️ Downloading model",
+        total=total,
+        unit='B',
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as bar:
+        for chunk in response.iter_content(1024):
+            if chunk:
+                f.write(chunk)
+                bar.update(len(chunk))
+
+MODEL_ID = "1MzNcsebrm0IBUhbsRoD7L8tW3Grv85MJ"
 MODEL_PATH = BASE_DIR / "best.pt"
 
-# Download model if not exists
 if not MODEL_PATH.exists():
-    print("⬇️ Downloading model file...")
-    response = requests.get(MODEL_URL)
-    with open(MODEL_PATH, "wb") as f:
-        f.write(response.content)
+    download_file_from_google_drive(MODEL_ID, MODEL_PATH)
     print("✅ Model downloaded successfully")
+
 
 
 model = YOLO(str(MODEL_PATH))
